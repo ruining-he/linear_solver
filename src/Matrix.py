@@ -1,4 +1,4 @@
-import sys
+from operation import *
 
 
 class Matrix(list):
@@ -13,7 +13,8 @@ class Matrix(list):
             else:
                 self.nrow = len(self)
                 self.ncol = len(self[0])
-        elif len(i_all_row) == 0:         #没处理 a = Matrix([]) 的情况；处理了 a = Matrix()的情况
+        elif len(i_all_row) == 0:
+            # 没处理 a = Matrix([]) 的情况；处理了 a = Matrix()的情况
             list.__init__(self, [])
             self.nrow = 0
             self.ncol = 0
@@ -47,12 +48,12 @@ class Matrix(list):
         count_zero = 0
         index_one = 0
         for i in range(self.nrow):
-            if self[i][j] == 1:
+            if if_equal(self[i][j], 1):
                 count_one += 1
                 index_one = i
                 if count_one > 1:
                     return False
-            elif self[i][j] == 0:
+            elif if_equal(self[i][j], 0):
                 count_zero += 1
         # if True, then return the index of i
         if count_zero + count_one == self.nrow:
@@ -69,7 +70,7 @@ class Matrix(list):
     def if_all_negative_other_first(self, i=0):
         # valid for row
         for j in range(1, self.ncol):
-            if self[i][j] > 0:
+            if self[i][j] > 0.00001:
                 return False
         return True
 
@@ -83,6 +84,7 @@ class Matrix(list):
 
     def ratio_RHS(self, i, j):
         return self[i][-1]/self[i][j]
+
 
 if __name__ == '__main__':
     c = Matrix([[1, 1], [2, 2]])
