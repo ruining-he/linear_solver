@@ -35,6 +35,7 @@ class SimplexTableau(list):
         self.standard()
         self.tableau = self.build_tableau()
         self.changed_variables = [] # index: 0, 1, 2
+        # if optimal_solution = [], unbounded
         self.optimal_solution = self.iter_tableau()
 
     def standard(self):
@@ -111,6 +112,7 @@ class SimplexTableau(list):
     def iter_tableau(self):
         # 暂时没有排除 无界解等情况
         # initial solution
+        basic_variable_all = []
         basic_variable = []
         # col number of basic variable
         for j in range(1, self.tableau.ncol-1):
@@ -118,12 +120,14 @@ class SimplexTableau(list):
                 break
             if self.tableau.if_identity(j):
                 basic_variable.append(j)
+        basic_variable.sort()
 
         if len(basic_variable) != self.m:
             sys.exit("Error: Wrong initialize. Can't find initial solution.")
 
         # iter begin
         count = 0
+        bland_flag = 0
         while not self.tableau.if_all_negative_other_first():
             # print
             print("Iteration: ", count)
@@ -131,32 +135,52 @@ class SimplexTableau(list):
             count += 1
 
             # entering
-            maxj = self.tableau.find_max_other_first()
-            # transform maxj th col to identity
+            if not bland_flag and basic_variable not in basic_variable_all:
+                enterj = self.tableau.find_max_other_first()
+            else:
+                # bland法则是从此都这样用还是仅一次用？--从此都这样用
+                bland_flag = 1
+                for j in range(1, self.tableau.ncol-1):
+                    if self.tableau[0][j] > 0:
+                        enterj = j
+                        break
+
+            # transform enterj th col to identity
             # choose leaving variables
             min_ratio_i = 1
             min_ratio = 9999
+            # row number in leaving_set
             leaving_set = []
+            nonpositive_leaving_count = 0
             for i in range(1, self.tableau.nrow):
-                if self.tableau[i][maxj] != 0:
+                if self.tableau[i][enterj] != 0:
                     # avoid divide 0
-                    new_ratio = self.tableau.ratio_RHS(i, maxj)
+                    new_ratio = self.tableau.ratio_RHS(i, enterj)
                     if new_ratio < 0:
+                        nonpositive_leaving_count += 1
                         continue
+                    elif new_ratio == 0:
+                        if self.tableau[i][enterj] < 0:
+                            continue
 
                     if new_ratio == min_ratio:
                         leaving_set.append(i)
                     elif new_ratio < min_ratio:
-                        # apply to Brand Rule here. 这里选的不一定是下标最小的leaving variables。
                         min_ratio_i = i
                         min_ratio = new_ratio
                         if not leaving_set:
                             leaving_set.append(i)
-                        elif new_ratio < self.tableau.ratio_RHS(leaving_set[0], maxj):
+                        elif new_ratio < self.tableau.ratio_RHS(leaving_set[0], enterj):
                             leaving_set.clear()
                             leaving_set.append(i)
+                else:
+                    nonpositive_leaving_count += 1
+
+            if nonpositive_leaving_count == self.tableau.nrow-1:
+                return None
 
             # find exact leaving variables(noted as leave_j)
+            # Bland rule: min leaving j.
             leave_j = 9999
             for i in leaving_set:
                 for j in basic_variable:
@@ -175,21 +199,27 @@ class SimplexTableau(list):
             # QUESTION: 数学上，要如何最快地能够消元成功？这种成功是必然的吗？--有的，成功是必然的，因为对于其他原是identity的列\
             # 都是0-0，而对于要争夺basis位置的两个新老变量，才会是其他数减去非零数。
             for i in range(0, self.tableau.nrow):
-                if self.tableau[i][maxj] == 0:
+                if self.tableau[i][enterj] == 0:
                     continue
                 if i == min_ratio_i:
-                    self.tableau.row_self_mul(min_ratio_i, 1/self.tableau[min_ratio_i][maxj])
-                    continue
+                    self.tableau.row_self_mul(min_ratio_i, 1/self.tableau[min_ratio_i][enterj])
+                else:
+                    divide_ratio = self.tableau[i][enterj]/self.tableau[min_ratio_i][enterj]
+                    self.tableau.row_add(i, min_ratio_i, -1*divide_ratio)
 
-                divide_ratio = self.tableau[i][maxj]/self.tableau[min_ratio_i][maxj]
-                self.tableau.row_add(i, min_ratio_i, -1*divide_ratio)
-
+            # update all basis
+            basic_variable_all.append(basic_variable)
             # update basis
-            basic_variable.append(maxj)
+            basic_variable.append(enterj)
             basic_variable.remove(leave_j)
+            basic_variable.sort()
 
         print("Iteration: ", count)
         self.print_tab()
+
+        # insert multiple optimal solution here
+
+        # insert multiple optimal solution here
 
         # get the optimal solution
         # optimal_solution[0] is the obj value, optimal_solution[i] is the value of Xi
@@ -212,7 +242,7 @@ class SimplexTableau(list):
         # get optimal function value
         obj_value = list_dot_mul_sum(optimal_solution[1:], self.c)
         if self.obj == 1:
-           obj_value = -1*obj_value
+            obj_value = -1*obj_value
         optimal_solution[0] = obj_value
 
         # 。。。对应的负的变量或者free的变量也得还原回去，我跪了。
@@ -226,6 +256,11 @@ class SimplexTableau(list):
         return optimal_solution
 
     def print_result(self):
+        # unbounded
+        if not self.optimal_solution:
+            print("\nUnbounded feasible region and infinite objective value.")
+            return None
+
         if self.obj == 0:
             objstr = 'Min'
         else:
@@ -238,7 +273,7 @@ class SimplexTableau(list):
     def print_tab(self):
         for row in self.tableau:
             for item in row:
-                print('{:^10.2f}'.format(item), end='')
+                print('{:^10.4f}'.format(item), end='')
             print()
 
 
@@ -291,15 +326,32 @@ if __name__ == '__main__':
     a.print_result()
     '''
 
-
+    '''
+    退化
     i_obj = 0
     ic = [-3/4, 150, -1/50, 6, 0, 0, 0]
     i_m = 3
     i_n = 7
-    ia = [[1/4, -60, -1/25, 9, 1, 0, 0], [1/4, -90, -1/50, 3, 0, 1, 0], [0, 0, 1, 0, 0, 0, 1]]
+    ia = [[1/4, -60, -1/25, 9, 1, 0, 0], [1/2, -90, -1/50, 3, 0, 1, 0], [0, 0, 1, 0, 0, 0, 1]]
     i_sign = [0, 0, 0]
     ib = [0, 0, 1]
     i_x = [1, 1, 1, 1, 1, 1, 1]
     a = SimplexTableau(i_obj, ic, i_m, i_n, ia, i_sign, ib, i_x)
     
     a.print_result()
+    '''
+
+    '''
+    unbounded
+    i_obj = 1
+    ic = [5, 4]
+    i_m = 2
+    i_n = 2
+    ia = [[1, 0], [1, -1]]
+    i_sign = [-1, -1]
+    ib = [7, 8]
+    i_x = [1, 1]
+    a = SimplexTableau(i_obj, ic, i_m, i_n, ia, i_sign, ib, i_x)
+
+    a.print_result()
+    '''
