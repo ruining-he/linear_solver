@@ -32,14 +32,20 @@ class SimplexTableau(list):
         self.a = Matrix(ia) # coefficients in constraints
         self.b = ib # RHS numbers
         self.sign = i_sign # <=, ==, >= in constraints
+
+        self.slack_variable_row = []
         self.standard()
         self.tableau = self.build_tableau()
         self.changed_variables = [] # index: 0, 1, 2
         # if optimal_solution = [], unbounded
+        self.optimal_solution = []
+
+        # self.solve_tableau()
+
+    def solve_tableau(self):
         self.optimal_solution = self.iter_tableau()
 
     def standard(self):
-        # two-phase can inherit from this
 
         # obj: 0-min; 1-max
         if self.obj == 1:
@@ -56,6 +62,7 @@ class SimplexTableau(list):
                 self.slack_n += 1
                 self.c.append(0)
                 self.x.append(1)
+                self.slack_variable_row.append(i+1)
                 new_col = [0 for i in range(self.m)]
                 if self.sign[i] == -1:
                     new_col[i] = 1
@@ -106,21 +113,24 @@ class SimplexTableau(list):
         build_newcol.insert(0, 0)
         tab.add_new_col(self.n+2, build_newcol)
 
-        print("in Class, tab = ", tab)
         return tab
 
-    def iter_tableau(self):
-        # 暂时没有排除 无界解等情况
-        # initial solution
-        basic_variable_all = []
-        basic_variable = []
+    def init_basic_variable(self):
         # col number of basic variable
+        basic_variable = []
         for j in range(1, self.tableau.ncol-1):
             if len(basic_variable) == self.tableau.nrow:
                 break
             if self.tableau.if_identity(j):
                 basic_variable.append(j)
         basic_variable.sort()
+        return basic_variable
+
+    def iter_tableau(self):
+        # 暂时没有排除 无穷多解情况
+        basic_variable_all = []
+        basic_variable= self.init_basic_variable()
+        print("basic variable=",basic_variable,"\nall= ",basic_variable_all)
 
         if len(basic_variable) != self.m:
             sys.exit("Error: Wrong initialize. Can't find initial solution.")
@@ -217,10 +227,6 @@ class SimplexTableau(list):
         print("Iteration: ", count)
         self.print_tab()
 
-        # insert multiple optimal solution here
-
-        # insert multiple optimal solution here
-
         # get the optimal solution
         # optimal_solution[0] is the obj value, optimal_solution[i] is the value of Xi
         optimal_solution = [0 for i in range(self.n+1)]
@@ -279,7 +285,7 @@ class SimplexTableau(list):
 
 if __name__ == '__main__':
     '''
-    # def __init__(self, i_obj, ic, i_m, i_n, ia, i_sign, ib, i_x):
+    # common test 1
     i_obj = 1
     ic = [1, 2]
     i_m = 2
@@ -288,14 +294,10 @@ if __name__ == '__main__':
     i_sign = [-1, -1]
     ib = [3, 1]
     i_x = [1, 1]
-    a = SimplexTableau(i_obj, ic, i_m, i_n, ia, i_sign, ib, i_x)
-    a.print_tab()
-
-#    a.iter_tableau()
-    a.print_result()
     '''
 
     '''
+    # common test 2
     i_obj = 1
     ic = [3, 4, -1, 2]
     i_m = 2
@@ -304,15 +306,10 @@ if __name__ == '__main__':
     i_sign = [-1, -1]
     ib = [25, 36]
     i_x = [1, 1, 1, 1]
-    a = SimplexTableau(i_obj, ic, i_m, i_n, ia, i_sign, ib, i_x)
-#    a.print_tab()
-
-#    a.iter_tableau()
-    print("END PRINT:")
-    a.print_result()
     '''
 
     '''
+    # common test 3
     i_obj = 1
     ic = [3, 2, 1]
     i_m = 2
@@ -321,13 +318,10 @@ if __name__ == '__main__':
     i_sign = [-1, -1]
     ib = [24, 18]
     i_x = [1, 1, 1]
-    a = SimplexTableau(i_obj, ic, i_m, i_n, ia, i_sign, ib, i_x)
-
-    a.print_result()
     '''
 
     '''
-    退化
+    # degeneracy
     i_obj = 0
     ic = [-3/4, 150, -1/50, 6, 0, 0, 0]
     i_m = 3
@@ -336,9 +330,6 @@ if __name__ == '__main__':
     i_sign = [0, 0, 0]
     ib = [0, 0, 1]
     i_x = [1, 1, 1, 1, 1, 1, 1]
-    a = SimplexTableau(i_obj, ic, i_m, i_n, ia, i_sign, ib, i_x)
-    
-    a.print_result()
     '''
 
     '''
@@ -351,7 +342,18 @@ if __name__ == '__main__':
     i_sign = [-1, -1]
     ib = [7, 8]
     i_x = [1, 1]
-    a = SimplexTableau(i_obj, ic, i_m, i_n, ia, i_sign, ib, i_x)
-
-    a.print_result()
     '''
+
+    # two phase test
+    i_obj = 0
+    ic = [1, -2]
+    i_m = 3
+    i_n = 2
+    ia = [[1, 1], [-1, 1], [0, 1]]
+    i_sign = [1, 1, -1]
+    ib = [2, 1, 3]
+    i_x = [1, 1]
+
+    a = SimplexTableau(i_obj, ic, i_m, i_n, ia, i_sign, ib, i_x)
+    a.print_tab()
+    a.print_result()
