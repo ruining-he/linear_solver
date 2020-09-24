@@ -4,7 +4,6 @@ from operation import *
 class Matrix(list):
 
     def __init__(self, *i_all_row):
-        print("i_all_row = ", i_all_row)
         if len(i_all_row) == 1:
             list.__init__(self, i_all_row[0])
             if isinstance(i_all_row[0], int):
@@ -77,7 +76,7 @@ class Matrix(list):
     def find_max_other_first(self, i=0):
         # valid for row
         maxj = 1
-        for j in range(1, self.ncol):
+        for j in range(1, self.ncol-1):
             if self[i][maxj] < self[i][j]:
                 maxj = j
         return maxj
